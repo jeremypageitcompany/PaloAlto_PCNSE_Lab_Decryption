@@ -1,0 +1,69 @@
+
+set deviceconfig system update-schedule threats recurring daily at 00:00
+set deviceconfig system update-schedule threats recurring daily action download-and-install
+set deviceconfig system update-schedule threats recurring threshold 24
+set deviceconfig system update-schedule anti-virus recurring hourly action download-and-install
+
+set deviceconfig system dns-setting servers primary 8.8.8.8
+set deviceconfig system dns-setting servers secondary 1.1.1.1
+set deviceconfig system ntp-servers primary-ntp-server ntp-server-address pool.ntp.org
+set deviceconfig system ntp-servers primary-ntp-server authentication-type none
+
+set network profiles interface-management-profile Ping ping yes
+
+set network interface ethernet ethernet1/1 layer3 lldp enable no
+set network virtual-router default interface ethernet1/1
+set network virtual-router default routing-table ip static-route defaultInternet destination 0.0.0.0/0 interface ethernet1/1 nexthop ip-address 10.0.1.1
+set network interface ethernet ethernet1/2 layer3 lldp enable no
+set network virtual-router default interface ethernet1/2
+set network virtual-router default routing-table ip static-route Trust destination 10.0.4.0/23 interface ethernet1/2 nexthop ip-address 10.0.2.1
+set network interface ethernet ethernet1/3 layer3 lldp enable no
+set network virtual-router default interface ethernet1/3
+set network virtual-router default routing-table ip static-route DMZ destination 10.0.6.0/24 interface ethernet1/3 nexthop ip-address 10.0.3.1
+
+
+set network interface ethernet ethernet1/1 layer3 dhcp-client create-default-route no
+set network interface ethernet ethernet1/1 layer3 interface-management-profile Ping
+set network interface ethernet ethernet1/1 comment Untrust
+set network interface ethernet ethernet1/2 layer3 dhcp-client create-default-route no
+set network interface ethernet ethernet1/2 layer3 interface-management-profile Ping
+set network interface ethernet ethernet1/2 comment Trust
+set network interface ethernet ethernet1/3 layer3 dhcp-client create-default-route no
+set network interface ethernet ethernet1/3 layer3 interface-management-profile Ping
+set network interface ethernet ethernet1/3 comment DMZ
+
+
+set zone Untrust network layer3 ethernet1/1
+set zone Untrust network enable-packet-buffer-protection no
+set zone Trust network layer3 ethernet1/2
+set zone Trust network enable-packet-buffer-protection no
+set zone Trust enable-user-identification yes
+set zone DMZ network layer3 ethernet1/3
+set zone DMZ network enable-packet-buffer-protection no
+
+set rulebase default-security-rules rules intrazone-default action allow
+set rulebase default-security-rules rules intrazone-default log-start no
+set rulebase default-security-rules rules intrazone-default log-end yes
+set rulebase default-security-rules rules interzone-default action deny
+set rulebase default-security-rules rules interzone-default log-start no
+set rulebase default-security-rules rules interzone-default log-end yes
+
+set rulebase security rules OutboundTraffic to Untrust
+set rulebase security rules OutboundTraffic from [ DMZ Trust ]
+set rulebase security rules OutboundTraffic source any
+set rulebase security rules OutboundTraffic destination any
+set rulebase security rules OutboundTraffic source-user any
+set rulebase security rules OutboundTraffic category any
+set rulebase security rules OutboundTraffic application any
+set rulebase security rules OutboundTraffic service application-default
+set rulebase security rules OutboundTraffic source-hip any
+set rulebase security rules OutboundTraffic destination-hip any
+set rulebase security rules OutboundTraffic action allow
+
+set rulebase nat rules OutboundSNAT source-translation dynamic-ip-and-port interface-address interface ethernet1/1
+set rulebase nat rules OutboundSNAT to Untrust
+set rulebase nat rules OutboundSNAT from [ DMZ Trust ]
+set rulebase nat rules OutboundSNAT source any
+set rulebase nat rules OutboundSNAT destination any
+set rulebase nat rules OutboundSNAT service any
+

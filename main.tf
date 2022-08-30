@@ -12,7 +12,10 @@ provider "azurerm" {
   }
 }
 
-# Market Place Agreement
+
+#Market Place Agreement
+##Uncomment if you have issue with the Market Place Agreement
+/*
 resource "azurerm_marketplace_agreement" "paloAgreement" {
   publisher = "paloaltonetworks"
   offer     = "vmseries-flex"
@@ -30,7 +33,7 @@ resource "azurerm_marketplace_agreement" "microsoftAgreementAD" {
   offer     = "WindowsServer"
   plan      = "2016-Datacenter"
 }
-
+*/
 
 
 # Resource Group
