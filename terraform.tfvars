@@ -1,0 +1,6 @@
+project       = "padecrypt"
+location      = "canadacentral"
+env           = "lab"
+vm_size       = "Standard_DS3_v2"
+vm_sku        = "byol"
+vm_version    = "latest"

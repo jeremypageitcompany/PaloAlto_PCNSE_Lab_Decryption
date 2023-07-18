@@ -1,11 +1,13 @@
 variable "project" {
-  default     = "paloDecrypt"
   description = "project name"
 }
 
 variable "location" {
-  default     = "canadaeast"
   description = "Location of the resource group."
+}
+
+variable "env" {
+  description = "Environment deployed"
 }
 
 variable "resource_tags" {
@@ -13,82 +15,49 @@ variable "resource_tags" {
   type        = map(string)
   default = {
     org         = "jeremypageitcompany",
-    environment = "terraform"
+    environment = "lab"
   }
 }
 
-variable "suffix_0" {
-  default = "-mgmt"
-}
-
-variable "suffix_1" {
-  default = "-untrust"
-}
-
-variable "suffix_2" {
-  default = "-trust"
-}
-
-variable "suffix_3" {
-  default = "-dmz"
-}
-
-variable "suffix_4" {
-  default = "-users"
-}
-
-variable "suffix_5" {
-  default = "-serversInternal"
-}
-
-variable "suffix_6" {
-  default = "-serversDmz"
-}
-
 variable "subnet_vnet" {
-  default = "10.0.0.0/16"
+  description = "subnet for the VNET"
+  default     = "10.0.0.0/16"
 }
 
-variable "subnet_0" {
-  default = "10.0.0.0/24"
-}
-variable "subnet_1" {
-  default = "10.0.1.0/24"
-}
-variable "subnet_2" {
-  default = "10.0.2.0/24"
-}
-variable "subnet_3" {
-  default = "10.0.3.0/24"
-}
-variable "subnet_4" {
-  default = "10.0.4.0/24"
-}
-variable "subnet_5" {
-  default = "10.0.5.0/24"
-}
-variable "subnet_6" {
-  default = "10.0.6.0/24"
-}
-variable "subnet_7" {
-  default = "10.0.7.0/24"
-}
-
-variable "subnet_0_first_ip" {
-  default = "10.0.0.4"
-}
-
-variable "subnet_1_first_ip" {
-  default = "10.0.1.4"
-}
-
-variable "subnet_2_first_ip" {
-  default = "10.0.2.4"
+variable "subnet" {
+  description = "prefixes and names for different subnets"
+  default = {
+    "mgmt" = {
+      "prefix"  = ["10.0.0.0/24"]
+      "firstIp" = "10.0.0.4"
+    },
+    "untrust" = {
+      "prefix"  = ["10.0.1.0/24"]
+      "firstIp" = "10.0.1.4"
+    },
+    "trust" = {
+      "prefix"  = ["10.0.2.0/24"]
+      "firstIp" = "10.0.2.4"
+    },
+    "dmz" = {
+      "prefix"  = ["10.0.3.0/24"]
+      "firstIp" = "10.0.3.4"
+    }
+    "user" = {
+      "prefix"  = ["10.0.4.0/24"]
+      "firstIp" = "10.0.4.4"
+    },
+    "serverInternal" = {
+      "prefix"  = ["10.0.5.0/24"]
+      "firstIp" = "10.0.5.4"
+    },
+    "serverDmz" = {
+      "prefix"  = ["10.0.6.0/24"]
+      "firstIp" = "10.0.6.4"
+    }
+  }
 }
 
-variable "subnet_3_first_ip" {
-  default = "10.0.3.4"
-}
 
 variable "vm_publisher" {
   default = "paloaltonetworks"
@@ -102,6 +71,13 @@ variable "vm_offer" {
   default = "vmseries-flex"
 }
 
+variable "vm_version" {
+  default = "latest"
+}
+variable "vm_size" {
+  description = "Size of the VM for the Palo Alto"
+  default     = "Standard_DS3_v2" #vm100
+}
 variable "vm_username" {
   description = "vm username"
   type        = string
@@ -113,3 +89,4 @@ variable "vm_password" {
   type        = string
   sensitive   = true
 }
+

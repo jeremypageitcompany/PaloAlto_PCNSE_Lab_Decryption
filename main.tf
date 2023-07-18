@@ -37,92 +37,38 @@ resource "azurerm_marketplace_agreement" "microsoftAgreementAD" {
 
 
 # Resource Group
-resource "azurerm_resource_group" "rg" {
-  name     = join("", [var.project, "-rg"])
+resource "azurerm_resource_group" "rg-001" {
+  name     = "rg-${var.project}-${var.env}-${var.location}"
   location = var.location
   tags     = var.resource_tags
 }
 
 # VNET
-resource "azurerm_virtual_network" "vnet" {
-  name                = join("", [var.project, "-vnet"])
-  resource_group_name = azurerm_resource_group.rg.name
+resource "azurerm_virtual_network" "vnet-001" {
+  name                = "vnet-${var.project}-${var.env}-${var.location}"
+  resource_group_name = azurerm_resource_group.rg-001.name
   location            = var.location
   address_space       = [var.subnet_vnet]
   tags                = var.resource_tags
 }
 
-## Subnets
-#MGMT Palo
-resource "azurerm_subnet" "subnet_0" {
-  name                 = join("", ["subnet_0", var.suffix_0])
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [var.subnet_0]
+# Subnets
+resource "azurerm_subnet" "subnet-000" {
+  for_each = var.subnet
+
+  name                 = "subnet_${each.key}-${var.project}-${var.env}-${var.location}"
+  resource_group_name  = azurerm_resource_group.rg-001.name
+  virtual_network_name = azurerm_virtual_network.vnet-001.name
+  address_prefixes     = each.value.prefix
 }
 
-#Untrust Palo
-resource "azurerm_subnet" "subnet_1" {
-  name                 = join("", ["subnet_1", var.suffix_1])
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [var.subnet_1]
-}
-
-#Trust Palo
-resource "azurerm_subnet" "subnet_2" {
-  name                 = join("", ["subnet_2", var.suffix_2])
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [var.subnet_2]
-}
-
-#DMZ Palo
-resource "azurerm_subnet" "subnet_3" {
-  name                 = join("", ["subnet_3", var.suffix_3])
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [var.subnet_3]
-}
-
-#W10 User
-resource "azurerm_subnet" "subnet_4" {
-  name                 = join("", ["subnet_4", var.suffix_4])
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [var.subnet_4]
-}
-
-#AD
-resource "azurerm_subnet" "subnet_5" {
-  name                 = join("", ["subnet_5", var.suffix_5])
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [var.subnet_5]
-}
-
-#Ubuntu DMZ
-resource "azurerm_subnet" "subnet_6" {
-  name                 = join("", ["subnet_6", var.suffix_6])
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [var.subnet_6]
-}
-
-#Bastion
-resource "azurerm_subnet" "subnet_7" {
-  name                 = "AzureBastionSubnet"
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [var.subnet_7]
-}
 
 ##Route Table
 #toTrustInterface
-resource "azurerm_route_table" "udr_0" {
-  name                          = join("", ["udr_0", var.suffix_2])
+resource "azurerm_route_table" "udr-001" {
+  name                          = "udr-trust-${var.project}-${var.env}-${var.location}"
   location                      = var.location
-  resource_group_name           = azurerm_resource_group.rg.name
+  resource_group_name           = azurerm_resource_group.rg-001.name
   tags                          = var.resource_tags
   disable_bgp_route_propagation = true
 
@@ -130,24 +76,24 @@ resource "azurerm_route_table" "udr_0" {
     name                   = "DefaultRoutePaloTrust"
     address_prefix         = "0.0.0.0/0"
     next_hop_type          = "VirtualAppliance"
-    next_hop_in_ip_address = var.subnet_2_first_ip
+    next_hop_in_ip_address = var.subnet.trust.firstIp
   }
 
 }
 
 #toDmzInterface
-resource "azurerm_route_table" "udr_1" {
-  name                          = join("", ["udr_1", var.suffix_3])
+resource "azurerm_route_table" "udr-002" {
+  name                          = "udr-dmz-${var.project}-${var.env}-${var.location}"
   location                      = var.location
-  resource_group_name           = azurerm_resource_group.rg.name
+  resource_group_name           = azurerm_resource_group.rg-001.name
   tags                          = var.resource_tags
   disable_bgp_route_propagation = true
 
   route {
-    name                   = "DefaultRoutePaloTrust"
+    name                   = "DefaultRoutePaloDmz"
     address_prefix         = "0.0.0.0/0"
     next_hop_type          = "VirtualAppliance"
-    next_hop_in_ip_address = var.subnet_3_first_ip
+    next_hop_in_ip_address = var.subnet.dmz.firstIp
   }
 
 }
@@ -155,18 +101,18 @@ resource "azurerm_route_table" "udr_1" {
 ## Associate route with subnet
 #W10 subnet
 resource "azurerm_subnet_route_table_association" "association_subnet_0" {
-  subnet_id      = azurerm_subnet.subnet_4.id
-  route_table_id = azurerm_route_table.udr_0.id
+  subnet_id      = azurerm_subnet.subnet-000["user"].id
+  route_table_id = azurerm_route_table.udr-001.id
 }
 
 #AD subnet
 resource "azurerm_subnet_route_table_association" "association_subnet_1" {
-  subnet_id      = azurerm_subnet.subnet_5.id
-  route_table_id = azurerm_route_table.udr_0.id
+  subnet_id      = azurerm_subnet.subnet-000["serverInternal"].id
+  route_table_id = azurerm_route_table.udr-001.id
 }
 
 #DMZ subnet
 resource "azurerm_subnet_route_table_association" "association_subnet_2" {
-  subnet_id      = azurerm_subnet.subnet_6.id
-  route_table_id = azurerm_route_table.udr_1.id
+  subnet_id      = azurerm_subnet.subnet-000["serverDmz"].id
+  route_table_id = azurerm_route_table.udr-002.id
 }

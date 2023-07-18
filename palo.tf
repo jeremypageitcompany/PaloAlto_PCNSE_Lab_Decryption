@@ -1,8 +1,8 @@
 #NSG MGMT Palo
-resource "azurerm_network_security_group" "nsg_0" {
-  name                = join("", ["nsg_0", var.suffix_0])
+resource "azurerm_network_security_group" "nsg-001" {
+  name                = "nsg_mgmt-${var.project}-${var.env}-${var.location}"
   location            = var.location
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = azurerm_resource_group.rg-001.name
   tags                = var.resource_tags
 
   security_rule = [{
@@ -11,10 +11,10 @@ resource "azurerm_network_security_group" "nsg_0" {
     destination_address_prefix                 = "*"
     destination_port_range                     = ""
     direction                                  = "Inbound"
-    name                                       = "AllowInboundSSHhome"
+    name                                       = "AllowInboundHome"
     priority                                   = 100 # between 100 - 4096
     protocol                                   = "Tcp"
-    source_address_prefix                      = "${chomp(data.http.myip.body)}"
+    source_address_prefix                      = "${chomp(data.http.myip.response_body)}"
     source_port_range                          = "*"
     destination_address_prefixes               = []
     destination_application_security_group_ids = []
@@ -27,32 +27,32 @@ resource "azurerm_network_security_group" "nsg_0" {
 }
 
 # Empty NSG for the untrust interface
-resource "azurerm_network_security_group" "nsg_1" {
-  name                = join("", ["nsg_1", var.suffix_1])
+resource "azurerm_network_security_group" "nsg-002" {
+  name                = "nsg_untrust-${var.project}-${var.env}-${var.location}"
   location            = var.location
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = azurerm_resource_group.rg-001.name
   tags                = var.resource_tags
 }
 
 #NSG Association
 #MGMT
 resource "azurerm_subnet_network_security_group_association" "association_0" {
-  subnet_id                 = azurerm_subnet.subnet_0.id
-  network_security_group_id = azurerm_network_security_group.nsg_0.id
+  subnet_id                 = azurerm_subnet.subnet-000["mgmt"].id
+  network_security_group_id = azurerm_network_security_group.nsg-001.id
 }
 
 #Untrust
 resource "azurerm_subnet_network_security_group_association" "association_1" {
-  subnet_id                 = azurerm_subnet.subnet_1.id
-  network_security_group_id = azurerm_network_security_group.nsg_1.id
+  subnet_id                 = azurerm_subnet.subnet-000["untrust"].id
+  network_security_group_id = azurerm_network_security_group.nsg-002.id
 }
 
 ##Public IP
 #MGMT
-resource "azurerm_public_ip" "pip_0" {
-  name                = join("", ["pip_0", var.suffix_0])
+resource "azurerm_public_ip" "pip-001" {
+  name                = "pip_mgmt-${var.project}-${var.env}-${var.location}"
   location            = var.location
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = azurerm_resource_group.rg-001.name
   allocation_method   = "Static"
   tags                = var.resource_tags
   sku                 = "Standard"
@@ -60,10 +60,10 @@ resource "azurerm_public_ip" "pip_0" {
 }
 
 #Untrust
-resource "azurerm_public_ip" "pip_1" {
-  name                = join("", ["pip_1", var.suffix_1])
+resource "azurerm_public_ip" "pip-002" {
+  name                = "pip_untrust-${var.project}-${var.env}-${var.location}"
   location            = var.location
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = azurerm_resource_group.rg-001.name
   allocation_method   = "Static"
   tags                = var.resource_tags
   sku                 = "Standard"
@@ -72,77 +72,77 @@ resource "azurerm_public_ip" "pip_1" {
 
 ##Network interfaces
 #MGMT PALO
-resource "azurerm_network_interface" "nic_0" {
-  name                = join("", ["nic_0", var.suffix_0])
+resource "azurerm_network_interface" "nic-mgmt-001" {
+  name                = "nic_mgmt-${var.project}-${var.env}-${var.location}"
   location            = var.location
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = azurerm_resource_group.rg-001.name
   tags                = var.resource_tags
   ip_configuration {
     name                          = "internal"
-    subnet_id                     = azurerm_subnet.subnet_0.id
+    subnet_id                     = azurerm_subnet.subnet-000["mgmt"].id
     private_ip_address_allocation = "Static"
-    private_ip_address            = var.subnet_0_first_ip
-    public_ip_address_id          = azurerm_public_ip.pip_0.id
+    private_ip_address            = var.subnet.mgmt.firstIp
+    public_ip_address_id          = azurerm_public_ip.pip-001.id
   }
 }
 
 #Untrust Palo
-resource "azurerm_network_interface" "nic_1" {
-  name                          = join("", ["nic_1", var.suffix_1])
+resource "azurerm_network_interface" "nic-untrust-001" {
+  name                          = "nic_untrust-${var.project}-${var.env}-${var.location}"
   location                      = var.location
-  resource_group_name           = azurerm_resource_group.rg.name
+  resource_group_name           = azurerm_resource_group.rg-001.name
   enable_accelerated_networking = true
   enable_ip_forwarding          = true
   tags                          = var.resource_tags
   ip_configuration {
     name                          = "internal"
-    subnet_id                     = azurerm_subnet.subnet_1.id
+    subnet_id                     = azurerm_subnet.subnet-000["untrust"].id
     private_ip_address_allocation = "Static"
-    private_ip_address            = var.subnet_1_first_ip
-    public_ip_address_id          = azurerm_public_ip.pip_1.id
+    private_ip_address            = var.subnet.untrust.firstIp
+    public_ip_address_id          = azurerm_public_ip.pip-002.id
   }
 }
 
 #TrustPalo
-resource "azurerm_network_interface" "nic_2" {
-  name                          = join("", ["nic_2", var.suffix_2])
+resource "azurerm_network_interface" "nic-trust-001" {
+  name                          = "nic_trust-${var.project}-${var.env}-${var.location}"
   location                      = var.location
-  resource_group_name           = azurerm_resource_group.rg.name
+  resource_group_name           = azurerm_resource_group.rg-001.name
   enable_accelerated_networking = true
   enable_ip_forwarding          = true
   tags                          = var.resource_tags
   ip_configuration {
     name                          = "internal"
-    subnet_id                     = azurerm_subnet.subnet_2.id
+    subnet_id                     = azurerm_subnet.subnet-000["trust"].id
     private_ip_address_allocation = "Static"
-    private_ip_address            = var.subnet_2_first_ip
+    private_ip_address            = var.subnet.trust.firstIp
   }
 }
 
 #DMZPalo
-resource "azurerm_network_interface" "nic_3" {
-  name                          = join("", ["nic_3", var.suffix_3])
+resource "azurerm_network_interface" "nic-dmz-001" {
+  name                          = "nic_dmz-${var.project}-${var.env}-${var.location}"
   location                      = var.location
-  resource_group_name           = azurerm_resource_group.rg.name
+  resource_group_name           = azurerm_resource_group.rg-001.name
   enable_accelerated_networking = true
   enable_ip_forwarding          = true
   tags                          = var.resource_tags
   ip_configuration {
     name                          = "internal"
-    subnet_id                     = azurerm_subnet.subnet_3.id
+    subnet_id                     = azurerm_subnet.subnet-000["dmz"].id
     private_ip_address_allocation = "Static"
-    private_ip_address            = var.subnet_3_first_ip
+    private_ip_address            = var.subnet.dmz.firstIp
   }
 }
 
 
 # VM
-resource "azurerm_virtual_machine" "vm_palo" {
-  name                = join("", ["vm", var.project])
+resource "azurerm_virtual_machine" "vm-palo-001" {
+  name                = "vm_palo-${var.project}-${var.env}-${var.location}"
   location            = var.location
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = azurerm_resource_group.rg-001.name
   tags                = var.resource_tags
-  vm_size             = "Standard_D3_v2"
+  vm_size             = var.vm_size
 
   plan {
     #bundle1 with license
@@ -155,28 +155,28 @@ resource "azurerm_virtual_machine" "vm_palo" {
     publisher = var.vm_publisher
     offer     = var.vm_offer
     sku       = var.vm_sku
-    version   = "latest"
+    version   = var.vm_version
   }
 
   # FromImage will automatically create it
   storage_os_disk {
-    name          = "osDisk"
+    name          = "disk_palo-${var.project}-${var.env}-${var.location}"
     create_option = "FromImage"
   }
 
   os_profile {
-    computer_name  = join("", ["vm", var.project])
+    computer_name  = "palovm1"
     admin_username = var.vm_username
     admin_password = var.vm_password
 
   }
 
-  primary_network_interface_id = azurerm_network_interface.nic_0.id
+  primary_network_interface_id = azurerm_network_interface.nic-mgmt-001.id
   network_interface_ids = [
-    azurerm_network_interface.nic_0.id,
-    azurerm_network_interface.nic_1.id,
-    azurerm_network_interface.nic_2.id,
-    azurerm_network_interface.nic_3.id
+    azurerm_network_interface.nic-mgmt-001.id,
+    azurerm_network_interface.nic-untrust-001.id,
+    azurerm_network_interface.nic-trust-001.id,
+    azurerm_network_interface.nic-dmz-001.id
   ]
 
   os_profile_linux_config {
